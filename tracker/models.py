@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models, transaction
 from django.db.models.functions import Lower
 from django.utils import timezone
+from datetime import datetime, time
 
 class Company(models.Model):
   user = models.ForeignKey(
@@ -70,6 +71,21 @@ class Application(models.Model):
 
   def __str__(self):
     return f"{self.job_title} @ {self.company.name}"
+
+  def save(self, *args, **kwargs):
+    is_new = self._state.adding
+    super().save(*args, **kwargs)
+    if is_new:
+        # The first event is dated to date_applied, so imported or
+        # backdated applications produce correct timelines for pandas
+        applied_at = timezone.make_aware(
+            datetime.combine(self.date_applied, time.min)
+        )
+        StatusEvent.objects.create(
+            application=self,
+            status=self.current_status,
+            occurred_at=applied_at,
+        )
 
   def change_status(self, new_status, notes="", occurred_at=None):
     """Record a status change and keep current_status in sync."""
