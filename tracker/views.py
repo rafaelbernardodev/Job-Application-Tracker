@@ -33,10 +33,10 @@ class ApplicationViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-    @action(detail=True, methods=["post"], url_path="change-status")
+    @action(detail=True, methods=["post"], url_path="change-status", serializer_class=ChangeStatusSerializer)
     def change_status(self, request, pk=None):
         application = self.get_object()  # 404 if it isn't the user's
-        serializer = ChangeStatusSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
@@ -46,4 +46,6 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             occurred_at=data.get("occurred_at"),
         )
         # Re-fetch so the response includes the newly created event
-        return Response(self.get_serializer(self.get_object()).data)
+        refreshed = self.get_object()
+        return Response(ApplicationSerializer(refreshed, context=self.get_serializer_context()).data
+        )
