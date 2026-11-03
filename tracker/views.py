@@ -9,6 +9,10 @@ from .serializers import (
     CompanySerializer,
 )
 
+from rest_framework.views import APIView
+
+from .analytics import ApplicationAnalytics, to_records
+
 
 class CompanyViewSet(viewsets.ModelViewSet):
     serializer_class = CompanySerializer
@@ -49,3 +53,13 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         refreshed = self.get_object()
         return Response(ApplicationSerializer(refreshed, context=self.get_serializer_context()).data
         )
+
+class AnalyticsView(APIView):
+    def get(self, request):
+        analytics = ApplicationAnalytics.from_user(request.user)
+        return Response({
+            "funnel": to_records(analytics.funnel()),
+            "response_rate_by_source": to_records(analytics.response_rate_by_source()),
+            "time_to_stage": to_records(analytics.time_to_stage()),
+            "weekly_volume": to_records(analytics.weekly_volume()),
+        })
