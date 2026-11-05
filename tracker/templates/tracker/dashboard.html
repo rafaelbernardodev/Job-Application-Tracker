@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Job Tracker – Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root { --bg: #f6f7f9; --card: #fff; --text: #1f2937; --muted: #6b7280; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #111827; --card: #1f2937; --text: #f3f4f6; --muted: #9ca3af; }
+    }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text);
+           margin: 0; padding: 1.5rem; }
+    header { display: flex; justify-content: space-between; align-items: center;
+             max-width: 1100px; margin: 0 auto 1.5rem; }
+    h1 { font-size: 1.4rem; margin: 0; }
+    header span, .empty { color: var(--muted); }
+    .grid { display: grid; gap: 1rem; max-width: 1100px; margin: 0 auto;
+            grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+    .card { background: var(--card); border-radius: 12px; padding: 1rem 1.25rem; }
+    .card h2 { font-size: 1rem; margin: 0 0 .75rem; }
+    @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Application analytics</h1>
+    <span>Signed in as {{ request.user.username }}</span>
+  </header>
+
+  <div class="grid">
+    <div class="card"><h2>Funnel: how many applications reached each stage</h2>
+      <canvas id="funnel"></canvas></div>
+    <div class="card"><h2>Response rate by source (%)</h2>
+      <canvas id="sources"></canvas></div>
+    <div class="card"><h2>Applications per week</h2>
+      <canvas id="weekly"></canvas></div>
+    <div class="card"><h2>Average days from applying to each stage</h2>
+      <canvas id="timing"></canvas></div>
+  </div>
+
+  <script>
+    const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1).replace("_", " ");
+
+    function drawChart(canvasId, type, labels, label, values, options = {}) {
+      const canvas = document.getElementById(canvasId);
+      if (labels.length === 0) {
+        const msg = document.createElement("p");
+        msg.className = "empty";
+        msg.textContent = "Not enough data yet.";
+        canvas.replaceWith(msg);
+        return;
+      }
+      new Chart(canvas, {
+        type,
+        data: { labels, datasets: [{ label, data: values, borderWidth: 1, tension: 0.3 }] },
+        options: { plugins: { legend: { display: false } }, ...options },
+      });
+    }
+
+    async function loadDashboard() {
+      const response = await fetch("{% url 'analytics' %}", { credentials: "same-origin" });
+      if (!response.ok) {
+        document.querySelector(".grid").textContent = "Could not load analytics.";
+        return;
+      }
+      const data = await response.json();
+
+      drawChart("funnel", "bar",
+        data.funnel.map((r) => capitalize(r.stage)), "Applications",
+        data.funnel.map((r) => r.count));
+
+      drawChart("sources", "bar",
+        data.response_rate_by_source.map((r) => capitalize(r.source)), "Response rate",
+        data.response_rate_by_source.map((r) => Math.round(r.response_rate * 100)),
+        { scales: { y: { beginAtZero: true, max: 100 } } });
+
+      drawChart("weekly", "line",
+        data.weekly_volume.map((r) => r.week_ending), "Applications",
+        data.weekly_volume.map((r) => r.applications),
+        { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } });
+
+      drawChart("timing", "bar",
+        data.time_to_stage.map((r) => capitalize(r.stage)), "Mean days",
+        data.time_to_stage.map((r) => r.mean_days),
+        { indexAxis: "y" });
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

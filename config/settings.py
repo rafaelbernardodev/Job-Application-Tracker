@@ -136,3 +136,6 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
 }
+
+LOGIN_URL = "rest_framework:login"
+LOGIN_REDIRECT_URL = "dashboard"

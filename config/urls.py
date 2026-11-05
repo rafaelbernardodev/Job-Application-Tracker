@@ -16,9 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
+from tracker.views import DashboardView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path("dashboard/", DashboardView.as_view(), name="dashboard"),
     path("api/", include("tracker.urls")),
     path("api-auth/", include("rest_framework.urls")),
 ]

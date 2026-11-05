@@ -13,6 +13,10 @@ from rest_framework.views import APIView
 
 from .analytics import ApplicationAnalytics, to_records
 
+from django.contrib.auth.mixins import LoginRequiredMixin
+
+from django.views.generic import TemplateView
+
 
 class CompanyViewSet(viewsets.ModelViewSet):
     serializer_class = CompanySerializer
@@ -63,3 +67,6 @@ class AnalyticsView(APIView):
             "time_to_stage": to_records(analytics.time_to_stage()),
             "weekly_volume": to_records(analytics.weekly_volume()),
         })
+
+class DashboardView(LoginRequiredMixin, TemplateView):
+    template_name = "tracker/dashboard.html"
